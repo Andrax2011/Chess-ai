@@ -1,0 +1,44 @@
+content = """name: build-apk
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack ZIP
+        run: unzip -q ChessArrow.zip
+
+      - name: Download Stockfish Android arm64 binary
+        run: |
+          mkdir -p ChessArrow/app/src/main/jniLibs/arm64-v8a
+          curl -L -s https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-android-armv8.tar -o stockfish.tar
+          tar -xf stockfish.tar
+          SF_BIN=$(find . -type f -name "stockfish*" ! -name "*.tar" | head -n 1)
+          cp "$SF_BIN" ChessArrow/app/src/main/jniLibs/arm64-v8a/libstockfish.so
+          chmod +x ChessArrow/app/src/main/jniLibs/arm64-v8a/libstockfish.so
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        working-directory: ChessArrow
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChessArrow-apk
+          path: ChessArrow/app/build/outputs/apk/debug/app-debug.apk
+"""
+
+with open("build-v2.yml", "w", encoding="utf-8") as f:
+    f.write(content)
+
